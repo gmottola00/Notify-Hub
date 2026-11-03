@@ -1,0 +1,24 @@
+# Run the hub without Kubernetes:
+#
+#   make setup            # writes .env with a VAPID key and a token for "my-app"
+#   docker compose up -d  # hub on http://localhost:8300, SQLite in a volume
+#
+# Set NOTIFY_VAPID_SUBJECT in .env to a real mailto: or https:// contact before
+# sending to iPhones: Apple rejects placeholders.
+services:
+  notify:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    env_file: .env
+    environment:
+      NOTIFY_DATABASE_URL: sqlite+aiosqlite:////data/notify.db
+      NOTIFY_LOG_JSON: "true"
+    volumes:
+      - notify-data:/data
+    ports:
+      - "8300:8000"
+    restart: unless-stopped
+
+volumes:
+  notify-data:
