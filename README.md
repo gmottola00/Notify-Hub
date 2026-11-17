@@ -100,6 +100,7 @@ Interactive API docs at `http://localhost:8300/docs`.
 | `DELETE` | `/v1/subscriptions` | `{endpoint}`. Idempotent |
 | `GET` | `/v1/subscriptions` | The app's devices, with last success and consecutive failures |
 | `POST` | `/v1/notify` | `{title, body?, url?, tag?, ttl?, urgency?}` → `{sent, failed, removed}` |
+| `POST` | `/v1/alertmanager` | Alertmanager webhook payload → one notification per alert group, sent to the devices of the app `NOTIFY_ALERT_ROUTES` maps the caller to |
 
 The phone receives `{title, body?, url?, tag?}`. `url` is a path inside the app (`/budget`),
 opened when the notification is tapped. `ttl` (seconds, default 1 day) is how long the push
@@ -115,10 +116,23 @@ Everything is read from the environment (or `.env`), prefix `NOTIFY_`. See [`.en
 | `NOTIFY_VAPID_PRIVATE_KEY` | — | EC P-256 private key, PEM. **Required** |
 | `NOTIFY_VAPID_SUBJECT` | `mailto:admin@example.com` | `mailto:you@domain` or a bare `https://host`. Validated at boot; Apple rejects placeholders and `localhost` |
 | `NOTIFY_APPS` | `{}` | JSON: app name → SHA-256 hex of its token |
+| `NOTIFY_ALERT_ROUTES` | `{}` | JSON: caller app → app whose devices receive its Alertmanager webhooks |
 | `NOTIFY_DATABASE_URL` | `sqlite+aiosqlite:///./notify.db` | Any SQLAlchemy async URL; also read from `DATABASE_URL`. Postgres: `postgresql+psycopg://…` |
 | `NOTIFY_DEFAULT_TTL` | `86400` | Seconds |
 | `NOTIFY_SEND_CONCURRENCY` | `10` | Pushes in flight per notify call |
 | `NOTIFY_LOG_LEVEL` / `NOTIFY_LOG_JSON` | `INFO` / `false` | structlog, JSON in the cluster |
+
+### Alertmanager
+
+Point an Alertmanager `webhook_configs` receiver at `/v1/alertmanager` with its own
+token (an app in `NOTIFY_APPS`, e.g. `alertmanager`), and route that app to the PWA
+whose devices should ring: `NOTIFY_ALERT_ROUTES={"alertmanager": "alfred"}`. A caller
+with no route gets `403`, so no app reaches another app's devices by default.
+
+Each group becomes one notification: the first alert's `summary` as the title
+(🔴 critical, 🟠 anything else, ✅ when resolved), its `description` as the body, and a
+tag derived from `groupKey`, so the "resolved" push replaces the "firing" one. Critical
+firing alerts go out with `urgency: high`.
 
 Alembic migrations run at startup, before `/health` answers: a broken key or a failed
 migration means the container never becomes ready.

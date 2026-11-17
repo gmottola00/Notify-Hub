@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
+from notify_hub.alerts import AlertGroup, to_notification
 from notify_hub.auth import current_app
 from notify_hub.schemas import (
     NotifyIn,
@@ -68,6 +69,21 @@ async def notify(
 ) -> NotifyResult:
     """Send to every device of the calling app. Zero devices is not an error: ``sent`` is 0."""
     return await svc.notify(app, body)
+
+
+@v1.post("/alertmanager")
+async def alertmanager(
+    body: AlertGroup,
+    request: Request,
+    app: str = Depends(current_app),
+    svc: NotifyService = Depends(service),
+) -> NotifyResult:
+    """Alertmanager ``webhook_config`` receiver: one notification per alert group,
+    delivered to the devices of the app ``NOTIFY_ALERT_ROUTES`` maps the caller to."""
+    target = request.app.state.settings.alert_routes.get(app)
+    if target is None:
+        raise HTTPException(status_code=403, detail=f"no alert route for app {app!r}")
+    return await svc.notify(target, to_notification(body))
 
 
 router.include_router(v1)
