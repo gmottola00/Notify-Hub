@@ -20,7 +20,7 @@ from notify_hub.keys import new_vapid_pem  # noqa: E402
 from notify_hub.push import Message, Outcome, Target  # noqa: E402
 from notify_hub.settings import get_settings  # noqa: E402
 
-TOKENS = {"alfred": "alfred-token", "jarvis": "jarvis-token"}
+TOKENS = {"alfred": "alfred-token", "jarvis": "jarvis-token", "alertmanager": "alertmanager-token"}
 PEM = new_vapid_pem()
 
 
@@ -42,6 +42,7 @@ def _env(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv("NOTIFY_VAPID_PRIVATE_KEY", PEM)
     monkeypatch.setenv("NOTIFY_VAPID_SUBJECT", "mailto:test@example.com")
     monkeypatch.setenv("NOTIFY_APPS", json.dumps({app: digest(tok) for app, tok in TOKENS.items()}))
+    monkeypatch.setenv("NOTIFY_ALERT_ROUTES", json.dumps({"alertmanager": "alfred"}))
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

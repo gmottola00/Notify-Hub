@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     apps: dict[str, str] = {}
     """App name → SHA-256 hex digest of its bearer token. JSON in the environment."""
 
+    alert_routes: dict[str, str] = {}
+    """Caller app → app whose devices receive its Alertmanager webhooks, e.g.
+    ``{"alertmanager": "alfred"}``. A caller not listed here gets 403 on
+    ``/v1/alertmanager``: no app reaches another app's devices by default."""
+
     send_concurrency: int = 10
     """Pushes in flight at once for one notify call."""
 
